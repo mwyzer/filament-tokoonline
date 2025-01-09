@@ -14,16 +14,14 @@ return new class extends Migration
         Schema::create('stores', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->text('description')->nullable;
+            $table->text('description')->nullable();
             $table->string('image')->nullable();
+            $table->string('banner')->nullable();
             $table->string('address')->nullable();
-            $table->string('phone')->nullable();
-            //settings from rajaongkir
+            $table->string('whatsapp')->nullable();
             $table->integer('province_id');
-            $table->integer('city_id');
-            $table->integer('district_id');
-            $table->integer('subdistrict_id');
-
+            $table->integer('regency_id');
+            $table->integer('subdistrict_id')->nullable();
             $table->string('province_name');
             $table->string('regency_name');
             $table->string('subdistrict_name')->nullable();

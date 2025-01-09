@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\StoreResource\Pages;
 use App\Filament\Resources\StoreResource\RelationManagers;
+use App\Models\RajaOngkirSetting as ModelsRajaOngkirSetting;
 use App\Models\Store;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,6 +14,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
+use App\Services\RajaOngkirService;
+use App\Models\RajaOngkirSetting;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Illuminate\Support\Collection;
+use Filament\Notifications\Notification;
+
+
 class StoreResource extends Resource
 {
     protected static ?string $model = Store::class;
@@ -21,6 +30,22 @@ class StoreResource extends Resource
 
     public static function form(Form $form): Form
     {
+
+        $rajaongkir = new RajaOngkirService();
+        $rajaongkirSetting = RajaOngkirSetting::getActive();
+        $isProVersion = $rajaongkirSetting?->isPro() ?? false;
+
+        if (!$rajaongkirSetting?->is_valid) {
+            Notification::make()
+                ->title('Rajaongkir API is not valid')
+                ->body('Please configure valid Rajaongkir settings before creating a store')
+                ->danger()
+                ->send();
+
+            return $form->schema([]);
+        }
+
+
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
@@ -31,20 +56,27 @@ class StoreResource extends Resource
                     ->columnSpanFull(),
                 Forms\Components\FileUpload::make('image')
                     ->image(),
+                Forms\Components\TextInput::make('banner')
+                    ->maxLength(255),
                 Forms\Components\TextInput::make('address')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
+                Forms\Components\TextInput::make('whatsapp')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('province_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('city_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('district_id')
-                    ->required()
-                    ->numeric(),
+                Forms\Components\Select::make('province_id') // Use Select instead of TextInput
+                    ->label('Province')
+                    ->options(fn() => $rajaongkir->getProvinces())
+                    ->default(fn($record) => $record?->province_id)
+                    ->reactive()
+                    ->afterStateUpdated(function (Get $get, Set $set, $state) use ($rajaongkir) {
+                        $set('regency_id', null);
+                        $set('regency_name', null);
+
+                        if ($state) {
+                            $provinces = $rajaongkir->getProvinces();
+                            $set('province_name', $provinces[$state] ?? '');
+                        }
+                    })
+                    ->required(),
                 Forms\Components\TextInput::make('subdistrict_id')
                     ->required()
                     ->numeric(),
