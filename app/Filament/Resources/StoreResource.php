@@ -48,46 +48,92 @@ class StoreResource extends Resource
 
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('description')
-                    ->required()
-                    ->columnSpanFull(),
-                Forms\Components\FileUpload::make('image')
-                    ->image(),
-                Forms\Components\TextInput::make('banner')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('address')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('whatsapp')
-                    ->maxLength(255),
-                Forms\Components\Select::make('province_id') // Use Select instead of TextInput
-                    ->label('Province')
-                    ->options(fn() => $rajaongkir->getProvinces())
-                    ->default(fn($record) => $record?->province_id)
-                    ->reactive()
-                    ->afterStateUpdated(function (Get $get, Set $set, $state) use ($rajaongkir) {
-                        $set('regency_id', null);
-                        $set('regency_name', null);
+                Forms\Components\Group::make()
+                    ->schema([
+                        Forms\Components\Section::make('Basic Information')
+                            ->description('Basic Information of your online shop')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Textarea::make('description')
+                                    ->required()
+                                    ->columnSpanFull(),
+                                Forms\Components\TextInput::make('whatsapp')
+                                    ->prefix('+62')
+                                    ->helperText('Mohon masukan nomor tanpa angka 0, di awal. Contoh 81234567890 ')
+                                    ->placeholder('81234567890')
+                                    ->required()
+                                    ->numeric()
+                                    ->dehydrateStateUsing(fn($state) => '62' . ltrim($state, '62'))
+                                    ->formatStateUsing(fn($state) => ltrim($state, '62'))
+                                    ->validationAttribute('Nomor WhatsApp')
+                                    ->maxLength(255),
+                                Forms\Components\FileUpload::make('image')
+                                    ->image()
+                                    ->directory('stores')
+                                    ->required(),
+                                Forms\Components\FileUpload::make('banner')
+                                    ->image()
+                                    ->directory('stores/banner')
+                                    ->required(),
+                            ]),
+                    ]),
+                Forms\Components\Group::make()
+                    ->schema([
+                        Forms\Components\Section::make('Address')
+                            ->description('Use RajaOngkir API')
+                            ->schema([
+                                Forms\Components\Select::make('province_id')
+                                    ->label('Province')
+                                    ->options(fn() => $rajaongkir->getProvinces())
+                                    ->default(function ($record) {
+                                        return $record?->province_id;
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set, $state) use ($rajaongkir) {
+                                        $set('regency_id', null);
+                                        $set('regency_name', null);
 
-                        if ($state) {
-                            $provinces = $rajaongkir->getProvinces();
-                            $set('province_name', $provinces[$state] ?? '');
-                        }
-                    })
-                    ->required(),
-                Forms\Components\TextInput::make('subdistrict_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('province_name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('regency_name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('subdistrict_name')
-                    ->maxLength(255),
+                                        if ($state) {
+                                            $provinces = $rajaongkir->getProvinces();
+                                            $set('province_name', $provinces[$state] ?? '');
+                                        }
+                                    })
+                                    ->required(),
+                                Forms\Components\Select::make('regency_id')
+                                    ->label('Regency')
+                                    ->required()
+                                    ->options(function (Get $get, $record) use ($rajaongkir) {
+                                        $provinceId = $get('province_id') ?? $record?->province_id;
+                                        if (!$provinceId) {
+                                            return [];
+                                        }
+
+                                        return $rajaongkir->getCities($provinceId);
+                                    })
+                                    ->default(function ($record) {
+                                        return $record?->regency_id;
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set, $state) use ($rajaongkir) {
+                                        if ($state) {
+                                            $cities = $rajaongkir->getCities($get('province_id'));
+                                            $set('regency_name', $cities[$state] ?? '');
+                                        }
+                                    }),
+                                // Forms\Components\TextInput::make('subdistrict_id')
+                                //     ->numeric(),
+                                Forms\Components\TextInput::make('address')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('province_name'),
+                                Forms\Components\TextInput::make('regency_name'),
+                                // Forms\Components\TextInput::make('subdistrict_name'),
+                            ]),
+
+                    ]),
+
+
             ]);
     }
 
@@ -97,29 +143,14 @@ class StoreResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\ImageColumn::make('image'),
-                Tables\Columns\TextColumn::make('address')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('province_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('city_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('district_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('subdistrict_id')
+                Tables\Columns\TextColumn::make('regency_name')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('province_name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('regency_name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('subdistrict_name')
-                    ->searchable(),
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

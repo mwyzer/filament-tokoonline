@@ -10,8 +10,8 @@ use Filament\Notifications\Notification;
 class RajaOngkirService
 {
     protected $apiKey;
-    protected $setting;
     protected $baseUrl;
+    protected $setting;
 
     public function __construct()
     {
@@ -19,15 +19,17 @@ class RajaOngkirService
 
         if (!$this->setting || !$this->setting->is_valid) {
             Notification::make()
-                ->title('RajaOngkir API is not valid')
-                ->body('Please configure valid RajaOngkir settings before creating a store.')
+                ->title('RajaOngkir API Configuration Invalid')
+                ->body('Please configure valid RajaOngkir settings before performing API operations.')
                 ->danger()
                 ->send();
+
+            Log::error('RajaOngkir settings are invalid or missing.');
             return;
         }
 
         $this->apiKey = $this->setting->api_key;
-        $this->baseUrl = $this->setting->baseUrl; // Access baseUrl attribute
+        $this->baseUrl = $this->setting->baseUrl ?: 'https://api.rajaongkir.com/starter'; // Default fallback URL
     }
 
     /**
@@ -37,53 +39,82 @@ class RajaOngkirService
      */
     public function getProvinces()
     {
-        if (!$this->setting || !$this->setting->is_valid) {
+        if (!$this->isServiceConfigured()) {
             return collect();
         }
-
-        // dd($this->baseUrl);
 
         try {
             $response = Http::withHeaders([
                 'key' => $this->apiKey,
             ])->get($this->baseUrl . '/province');
 
-            // dd($response);
-
             if ($response->successful()) {
                 return collect($response->json('rajaongkir.results'))
                     ->pluck('province', 'province_id');
-            } else {
-                Log::error('Failed to fetch provinces', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
             }
+
+            Log::error('Failed to fetch provinces from RajaOngkir API', [
+                'status' => $response->status(),
+                'response_body' => $response->body(),
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching provinces from RajaOngkir API', [
-                'exception' => $e->getMessage(),
+            Log::error('Exception while fetching provinces from RajaOngkir API', [
+                'exception_message' => $e->getMessage(),
             ]);
         }
 
         return collect(); // Return empty collection on failure
     }
 
+    /**
+     * Fetch the list of cities based on the given province ID.
+     *
+     * @param string|int $provinceId
+     * @return \Illuminate\Support\Collection
+     */
     public function getCities($provinceId)
     {
-        $response = Http::withHeaders([
-            'key' => $this->apiKey,
-        ])->get($this->baseUrl . '/city', [
-            'province' => $provinceId,
-        ]);
-        
-        if ($response->successful()) {
-            return collect($response->json('rajaongkir.results'))
-                ->pluck('city_name', 'city_id');
-        } else {
-            Log::error('Failed to fetch cities', [
+        if (!$this->isServiceConfigured()) {
+            return collect();
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'key' => $this->apiKey,
+            ])->get($this->baseUrl . '/city', [
+                'province' => $provinceId,
+            ]);
+
+            if ($response->successful()) {
+                return collect($response->json('rajaongkir.results'))
+                    ->pluck('city_name', 'city_id');
+            }
+
+            Log::error('Failed to fetch cities from RajaOngkir API', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'response_body' => $response->body(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Exception while fetching cities from RajaOngkir API', [
+                'exception_message' => $e->getMessage(),
             ]);
         }
+
+        return collect(); // Return empty collection on failure
+    }
+
+    /**
+     * Check if the service is properly configured with valid settings.
+     *
+     * @return bool
+     */
+    protected function isServiceConfigured(): bool
+    {
+        if (!$this->setting || !$this->setting->is_valid) {
+            Log::warning('RajaOngkir settings are not configured or invalid.');
+            return false;
+        }
+
+        return true;
     }
 }
