@@ -20,11 +20,11 @@ return new class extends Migration
             $table->integer('price');
             $table->integer('stock');
             $table->boolean('is_active')->default(false);
-            $table->text('image_url')->nullable();
-            $table->integer('weight')->nullable()->default(0)->commentct('weight in grams');
-            $table->integer('height')->nullable()->default(0)->commentct('height in cm');
-            $table->integer('width')->nullable()->default(0)->commentct('width in cm');
-            $table->integer('length')->nullable()->default(0)->commentct('length in cm');
+            $table->text('images')->nullable();
+            $table->integer('weight')->default(0)->commenct('weight in grams');
+            $table->integer('height')->default(0)->commenct('height in cm');
+            $table->integer('width')->default(0)->commenct('width in cm');
+            $table->integer('length')->default(0)->commenct('length in cm');;
             $table->timestamps();
         });
     }

@@ -24,15 +24,17 @@ class Product extends Model
         'price',
         'stock',
         'is_active',
-        'image_url',
+        'images',
         'weight',
         'height',
         'width',
         'length',
     ];
 
-
-
+    protected $casts = [
+        'images' => 'array',
+    ];
+    
     public static function generateUniqueSlug(string $name): string
     {
         $slug = Str::slug($name);
@@ -53,5 +55,18 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function getFirstImageUrlAttribute()
+    {
+        if (empty($this->images)) {
+            return null;
+        }
+        
+        $firstImage = is_string($this->images) ? json_decode($this->images, true)[0] : $this->images[0];
+
+    
+        return $firstImage  ? url('storage/'. $firstImage) : null;
+        
     }
 }

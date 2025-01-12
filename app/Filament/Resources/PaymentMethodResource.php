@@ -17,7 +17,9 @@ class PaymentMethodResource extends Resource
 {
     protected static ?string $model = PaymentMethod::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static ?string $navigationGroup = 'Settings';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
@@ -30,9 +32,8 @@ class PaymentMethodResource extends Resource
                             ->maxLength(255),
                         Forms\Components\FileUpload::make('image')
                             ->image()
-                            ->directory('payment_methods')
                             ->required(),
-                        Forms\Components\TextInput::make('transaction_number')
+                        Forms\Components\TextInput::make('account_number')
                             ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('account_name')
@@ -48,8 +49,7 @@ class PaymentMethodResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\ImageColumn::make('image')
-                    ->disk('public'),
+                Tables\Columns\ImageColumn::make('image'),
                 Tables\Columns\TextColumn::make('account_number')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('account_name')
